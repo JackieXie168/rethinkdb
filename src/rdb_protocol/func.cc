@@ -14,22 +14,25 @@ func_t::func_t(const protob_t<const Backtrace> &bt_source)
   : pb_rcheckable_t(bt_source) { }
 func_t::~func_t() { }
 
-counted_t<val_t> func_t::call(env_t *env, eval_flags_t eval_flags) const {
+counted_t<val_t> func_t::call(signal_t *interruptor, env_t *env,
+                              eval_flags_t eval_flags) const {
     std::vector<counted_t<const datum_t> > args;
-    return call(env, args, eval_flags);
+    return call(interruptor, env, args, eval_flags);
 }
 
-counted_t<val_t> func_t::call(env_t *env,
+counted_t<val_t> func_t::call(signal_t *interruptor,
+                              env_t *env,
                               counted_t<const datum_t> arg,
                               eval_flags_t eval_flags) const {
-    return call(env, make_vector(arg), eval_flags);
+    return call(interruptor, env, make_vector(arg), eval_flags);
 }
 
-counted_t<val_t> func_t::call(env_t *env,
+counted_t<val_t> func_t::call(signal_t *interruptor,
+                              env_t *env,
                               counted_t<const datum_t> arg1,
                               counted_t<const datum_t> arg2,
                               eval_flags_t eval_flags) const {
-    return call(env, make_vector(arg1, arg2), eval_flags);
+    return call(interruptor, env, make_vector(arg1, arg2), eval_flags);
 }
 
 void func_t::assert_deterministic(const char *extra_msg) const {
@@ -48,6 +51,7 @@ reql_func_t::reql_func_t(const protob_t<const Backtrace> backtrace,
 reql_func_t::~reql_func_t() { }
 
 counted_t<val_t> reql_func_t::call(
+    signal_t *interruptor,
     env_t *env,
     const std::vector<counted_t<const datum_t> > &args,
     eval_flags_t eval_flags) const {
@@ -67,7 +71,7 @@ counted_t<val_t> reql_func_t::call(
             ? captured_scope
             : captured_scope.with_func_arg_list(arg_names, args);
 
-        scope_env_t scope_env(env->interruptor, env, std::move(new_scope));
+        scope_env_t scope_env(interruptor, env, std::move(new_scope));
         return body->eval(&scope_env, eval_flags);
     } catch (const datum_exc_t &e) {
         rfail(e.get_type(), "%s", e.what());
@@ -89,6 +93,7 @@ js_func_t::js_func_t(const std::string &_js_source,
 js_func_t::~js_func_t() { }
 
 counted_t<val_t> js_func_t::call(
+    UNUSED signal_t *interruptor,
     env_t *env,
     const std::vector<counted_t<const datum_t> > &args,
     UNUSED eval_flags_t eval_flags) const {
@@ -245,8 +250,10 @@ bool filter_match(counted_t<const datum_t> predicate, counted_t<const datum_t> v
     }
 }
 
-bool reql_func_t::filter_helper(env_t *env, counted_t<const datum_t> arg) const {
-    counted_t<const datum_t> d = call(env, make_vector(arg), NO_FLAGS)->as_datum();
+bool reql_func_t::filter_helper(signal_t *interruptor, env_t *env,
+                                counted_t<const datum_t> arg) const {
+    counted_t<const datum_t> d
+        = call(interruptor, env, make_vector(arg), NO_FLAGS)->as_datum();
     if (d->get_type() == datum_t::R_OBJECT &&
         (body->get_src()->type() == Term::MAKE_OBJ ||
          body->get_src()->type() == Term::DATUM)) {
@@ -275,19 +282,24 @@ std::string js_func_t::print_source() const {
     return ret;
 }
 
-bool js_func_t::filter_helper(env_t *env, counted_t<const datum_t> arg) const {
-    counted_t<const datum_t> d = call(env, make_vector(arg), NO_FLAGS)->as_datum();
+bool js_func_t::filter_helper(signal_t *interruptor, env_t *env,
+                              counted_t<const datum_t> arg) const {
+    counted_t<const datum_t> d
+        = call(interruptor, env, make_vector(arg), NO_FLAGS)->as_datum();
     return d->as_bool();
 }
 
-bool func_t::filter_call(env_t *env, counted_t<const datum_t> arg, counted_t<const func_t> default_filter_val) const {
+bool func_t::filter_call(signal_t *interruptor,
+                         env_t *env,
+                         counted_t<const datum_t> arg,
+                         counted_t<const func_t> default_filter_val) const {
     // We have to catch every exception type and save it so we can rethrow it later
     // So we don't trigger a coroutine wait in a catch statement
     std::exception_ptr saved_exception;
     base_exc_t::type_t exception_type;
 
     try {
-        return filter_helper(env, arg);
+        return filter_helper(interruptor, env, arg);
     } catch (const base_exc_t &e) {
         saved_exception = std::current_exception();
         exception_type = e.get_type();
@@ -305,7 +317,7 @@ bool func_t::filter_call(env_t *env, counted_t<const datum_t> arg, counted_t<con
         // NULL.
         try {
             if (default_filter_val) {
-                return default_filter_val->call(env)->as_bool();
+                return default_filter_val->call(interruptor, env)->as_bool();
             } else {
                 return false;
             }

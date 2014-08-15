@@ -931,7 +931,8 @@ THROWS_ONLY(interrupted_exc_t) {
             // rdb_context_t) and evaluated in a pristine environment (without global
             // optargs).
             ql::env_t sindex_env(job.env->interruptor, sindex->func_reql_version);
-            sindex_val = sindex->func->call(&sindex_env, val)->as_datum();
+            sindex_val = sindex->func->call(job.env->interruptor,
+                                            &sindex_env, val)->as_datum();
             if (sindex->multi == sindex_multi_bool_t::MULTI
                 && sindex_val->get_type() == ql::datum_t::R_ARRAY) {
                 boost::optional<uint64_t> tag = *ql::datum_t::extract_tag(key);
@@ -1287,7 +1288,8 @@ void compute_keys(const store_key_t &primary_key, counted_t<const ql::datum_t> d
     ql::env_t sindex_env(&non_interruptor, reql_version);
 
     counted_t<const ql::datum_t> index =
-        index_info.mapping.compile_wire_func()->call(&sindex_env, doc)->as_datum();
+        index_info.mapping.compile_wire_func()->call(&non_interruptor,
+                                                     &sindex_env, doc)->as_datum();
 
     if (index_info.multi == sindex_multi_bool_t::MULTI
         && index->get_type() == ql::datum_t::R_ARRAY) {

@@ -96,7 +96,7 @@ private:
         // (We might have wanted to do this anyway, though, because otherwise
         // we'd be compiling shortcut functions `n` times.)
         if (args->num_args() == 1) {
-            return f->call(env->env, flags);
+            return f->call(env->interruptor, env->env, flags);
         } else {
             counted_t<val_t> arg1 = args->arg(env, 1, flags);
             std::vector<counted_t<const datum_t> > arg_datums(1);
@@ -115,12 +115,13 @@ private:
                      kv != gd->end(grouped::order_doesnt_matter_t());
                      ++kv) {
                     arg_datums[0] = kv->second;
-                    (*out)[kv->first] = f->call(env->env, arg_datums, flags)->as_datum();
+                    (*out)[kv->first] = f->call(env->interruptor, env->env,
+                                                arg_datums, flags)->as_datum();
                 }
                 return make_counted<val_t>(out, backtrace());
             } else {
                 arg_datums[0] = arg1->as_datum();
-                return f->call(env->env, arg_datums, flags);
+                return f->call(env->interruptor, env->env, arg_datums, flags);
             }
         }
     }

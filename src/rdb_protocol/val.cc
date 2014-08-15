@@ -51,7 +51,7 @@ counted_t<const datum_t> table_t::batched_replace(
         for (size_t i = 0; i < vals.size(); ++i) {
             counted_t<const datum_t> new_val;
             try {
-                new_val = replacement_generator->call(env, vals[i])->as_datum();
+                new_val = replacement_generator->call(env->interruptor, env, vals[i])->as_datum();
                 new_val->rcheck_valid_replace(vals[i], keys[i], get_pkey());
                 r_sanity_check(new_val.has());
                 replacement_values.push_back(new_val);

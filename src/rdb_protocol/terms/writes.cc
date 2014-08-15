@@ -287,7 +287,7 @@ private:
                                        env->env->trace);
             counted_t<const func_t> f = args->arg(env, 1)->as_func(CONSTANT_SHORTCUT);
             while (counted_t<const datum_t> row = ds->next(env->env, batchspec)) {
-                counted_t<val_t> v = f->call(env->env, row);
+                counted_t<val_t> v = f->call(env->interruptor, env->env, row);
                 try {
                     counted_t<const datum_t> d = v->as_datum();
                     if (d->get_type() == datum_t::R_OBJECT) {

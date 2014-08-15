@@ -197,7 +197,7 @@ private:
                 d = d->merge(v->as_datum());
             } else {
                 auto f = v->as_func(CONSTANT_SHORTCUT);
-                d = d->merge(f->call(env->env, d, LITERAL_OK)->as_datum());
+                d = d->merge(f->call(env->interruptor, env->env, d, LITERAL_OK)->as_datum());
             }
         }
         return new_val(d);

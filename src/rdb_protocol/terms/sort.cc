@@ -70,7 +70,7 @@ private:
                 counted_t<const datum_t> lval;
                 counted_t<const datum_t> rval;
                 try {
-                    lval = it->second->call(env, l)->as_datum();
+                    lval = it->second->call(env->interruptor, env, l)->as_datum();
                 } catch (const base_exc_t &e) {
                     if (e.get_type() != base_exc_t::NON_EXISTENCE) {
                         throw;
@@ -78,7 +78,7 @@ private:
                 }
 
                 try {
-                    rval = it->second->call(env, r)->as_datum();
+                    rval = it->second->call(env->interruptor, env, r)->as_datum();
                 } catch (const base_exc_t &e) {
                     if (e.get_type() != base_exc_t::NON_EXISTENCE) {
                         throw;

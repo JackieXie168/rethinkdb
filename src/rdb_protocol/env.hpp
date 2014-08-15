@@ -103,6 +103,7 @@ public:
 
     // The interruptor signal while a query evaluates.
     signal_t *const interruptor;
+public:
 
     // This is non-empty when profiling is enabled.
     profile::trace_t *const trace;

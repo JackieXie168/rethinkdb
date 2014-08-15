@@ -136,7 +136,7 @@ void mock_namespace_interface_t::write_visitor_t::operator()(
         }
 
         counted_t<const ql::datum_t> new_val
-            = r.f.compile_wire_func()->call(env, old_val)->as_datum();
+            = r.f.compile_wire_func()->call(env->interruptor, env, old_val)->as_datum();
         data->erase(*it);
 
         bool err;

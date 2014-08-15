@@ -292,7 +292,8 @@ bool http_datum_stream_t::apply_depaginate(env_t *env, const http_result_t &res)
         = { make_counted<const datum_t>(std::move(arg_obj)) };
 
     try {
-        counted_t<const datum_t> depage = depaginate_fn->call(env, args)->as_datum();
+        counted_t<const datum_t> depage
+            = depaginate_fn->call(env->interruptor, env, args)->as_datum();
         return handle_depage_result(depage);
     } catch (const ql::exc_t &ex) {
         // Tack on some debugging info, as this shit can be tough

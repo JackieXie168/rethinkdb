@@ -29,6 +29,7 @@ public:
     virtual ~func_t();
 
     virtual counted_t<val_t> call(
+        signal_t *interruptor,
         env_t *env,
         const std::vector<counted_t<const datum_t> > &args,
         eval_flags_t eval_flags = NO_FLAGS) const = 0;
@@ -42,16 +43,18 @@ public:
 
     void assert_deterministic(const char *extra_msg) const;
 
-    bool filter_call(env_t *env,
+    bool filter_call(signal_t *interruptor,
+                     env_t *env,
                      counted_t<const datum_t> arg,
                      counted_t<const func_t> default_filter_val) const;
 
     // These are simple, they call the vector version of call.
-    counted_t<val_t> call(env_t *env, eval_flags_t eval_flags = NO_FLAGS) const;
-    counted_t<val_t> call(env_t *env,
+    counted_t<val_t> call(signal_t *interruptor, env_t *env,
+                          eval_flags_t eval_flags = NO_FLAGS) const;
+    counted_t<val_t> call(signal_t *interruptor, env_t *env,
                           counted_t<const datum_t> arg,
                           eval_flags_t eval_flags = NO_FLAGS) const;
-    counted_t<val_t> call(env_t *env,
+    counted_t<val_t> call(signal_t *interruptor, env_t *env,
                           counted_t<const datum_t> arg1,
                           counted_t<const datum_t> arg2,
                           eval_flags_t eval_flags = NO_FLAGS) const;
@@ -60,7 +63,8 @@ protected:
     explicit func_t(const protob_t<const Backtrace> &bt_source);
 
 private:
-    virtual bool filter_helper(env_t *env, counted_t<const datum_t> arg) const = 0;
+    virtual bool filter_helper(signal_t *interruptor, env_t *env,
+                               counted_t<const datum_t> arg) const = 0;
 
     DISABLE_COPYING(func_t);
 };
@@ -74,6 +78,7 @@ public:
     ~reql_func_t();
 
     counted_t<val_t> call(
+        signal_t *interruptor,
         env_t *env,
         const std::vector<counted_t<const datum_t> > &args,
         eval_flags_t eval_flags) const;
@@ -85,7 +90,9 @@ public:
 
 private:
     template <cluster_version_t> friend class wire_func_serialization_visitor_t;
-    bool filter_helper(env_t *env, counted_t<const datum_t> arg) const;
+    bool filter_helper(signal_t *interruptor,
+                       env_t *env,
+                       counted_t<const datum_t> arg) const;
 
     // Only contains the parts of the scope that `body` uses.
     var_scope_t captured_scope;
@@ -108,7 +115,8 @@ public:
 
     // Some queries, like filter, can take a shortcut object instead of a
     // function as their argument.
-    counted_t<val_t> call(env_t *env,
+    counted_t<val_t> call(signal_t *interruptor,
+                          env_t *env,
                           const std::vector<counted_t<const datum_t> > &args,
                           eval_flags_t eval_flags) const;
 
@@ -120,7 +128,8 @@ public:
 
 private:
     template <cluster_version_t> friend class wire_func_serialization_visitor_t;
-    bool filter_helper(env_t *env, counted_t<const datum_t> arg) const;
+    bool filter_helper(signal_t *interruptor, env_t *env,
+                       counted_t<const datum_t> arg) const;
 
     std::string js_source;
     uint64_t js_timeout_ms;

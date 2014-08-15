@@ -505,7 +505,7 @@ public:
         : env(_env), f(wf.compile_wire_func()), return_changes(_return_changes) { }
     counted_t<const ql::datum_t> replace(
         const counted_t<const ql::datum_t> &d, size_t) const {
-        return f->call(env, d, ql::LITERAL_OK)->as_datum();
+        return f->call(env->interruptor, env, d, ql::LITERAL_OK)->as_datum();
     }
     return_changes_t should_return_changes() const { return return_changes; }
 private:

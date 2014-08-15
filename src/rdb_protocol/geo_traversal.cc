@@ -115,7 +115,7 @@ void geo_intersecting_cb_t::on_candidate(
         // with query_geometry
         ql::env_t sindex_env(env->interruptor, sindex.func_reql_version);
         counted_t<const ql::datum_t> sindex_val =
-            sindex.func->call(&sindex_env, val)->as_datum();
+            sindex.func->call(sindex_env.interruptor, &sindex_env, val)->as_datum();
         if (sindex.multi == sindex_multi_bool_t::MULTI
             && sindex_val->get_type() == ql::datum_t::R_ARRAY) {
             boost::optional<uint64_t> tag = *ql::datum_t::extract_tag(store_key);

@@ -83,7 +83,7 @@ counted_t<val_t> global_optargs_t::get_optarg(env_t *env, const std::string &key
     if (!has_optarg(key)) {
         return counted_t<val_t>();
     }
-    return optargs[key].compile_wire_func()->call(env);
+    return optargs[key].compile_wire_func()->call(env->interruptor, env);
 }
 const std::map<std::string, wire_func_t> &global_optargs_t::get_all_optargs() const {
     return optargs;

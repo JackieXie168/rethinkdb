@@ -547,7 +547,7 @@ private:
                 for (auto it = required_funcs.begin();
                      it != required_funcs.end();
                      ++it) {
-                    if ((*it)->call(env->env, el)->as_bool()) {
+                    if ((*it)->call(env->interruptor, env->env, el)->as_bool()) {
                         std::swap(*it, required_funcs.back());
                         required_funcs.pop_back();
                         break; // Bag semantics for contains.

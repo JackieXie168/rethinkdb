@@ -390,7 +390,7 @@ class acc_func_t {
 public:
     explicit acc_func_t(const counted_t<const func_t> &_f) : f(_f) { }
     counted_t<const datum_t> operator()(env_t *env, const counted_t<const datum_t> &el) const {
-        return f.has() ? f->call(env, el)->as_datum() : el;
+        return f.has() ? f->call(env->interruptor, env, el)->as_datum() : el;
     }
 private:
     counted_t<const func_t> f;
@@ -566,7 +566,7 @@ private:
                             const counted_t<const datum_t> &el,
                             counted_t<const datum_t> *out) {
         try {
-            *out = out->has() ? f->call(env, *out, el)->as_datum() : el;
+            *out = out->has() ? f->call(env->interruptor, env, *out, el)->as_datum() : el;
             return true;
         } catch (const datum_exc_t &e) {
             throw exc_t(e, f->backtrace().get(), 1);
@@ -659,7 +659,7 @@ private:
             for (auto f = funcs.begin(); f != funcs.end(); ++f) {
                 try {
                     try {
-                        arr.push_back((*f)->call(env, *el)->as_datum());
+                        arr.push_back((*f)->call(env->interruptor, env, *el)->as_datum());
                     } catch (const base_exc_t &e) {
                         if (e.get_type() == base_exc_t::NON_EXISTENCE) {
                             arr.push_back(datum_t::null());
@@ -758,7 +758,7 @@ private:
         env_t *env, datums_t *lst, const counted_t<const datum_t> &) {
         try {
             for (auto it = lst->begin(); it != lst->end(); ++it) {
-                *it = f->call(env, *it)->as_datum();
+                *it = f->call(env->interruptor, env, *it)->as_datum();
             }
         } catch (const datum_exc_t &e) {
             throw exc_t(e, f->backtrace().get(), 1);
@@ -812,7 +812,7 @@ private:
         auto loc = it;
         try {
             for (it = lst->begin(); it != lst->end(); ++it) {
-                if (f->filter_call(env, *it, default_val)) {
+                if (f->filter_call(env->interruptor, env, *it, default_val)) {
                     loc->swap(*it);
                     ++loc;
                 }
@@ -837,7 +837,7 @@ private:
         profile::sampler_t sampler("Evaluating CONCAT_MAP elements.", env->trace);
         try {
             for (auto it = lst->begin(); it != lst->end(); ++it) {
-                auto ds = f->call(env, *it)->as_seq(env);
+                auto ds = f->call(env->interruptor, env, *it)->as_seq(env);
                 for (;;) {
                     auto v = ds->next_batch(env, bs);
                     if (v.size() == 0) break;
