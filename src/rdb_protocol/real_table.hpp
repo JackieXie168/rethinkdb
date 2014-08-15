@@ -50,7 +50,7 @@ private:
     threadnum_t thread;
 };
 
-class real_table_t : public base_table_t {
+class real_table_t FINAL : public base_table_t {
 public:
     /* This doesn't automatically wait for readiness. */
     real_table_t(
@@ -63,8 +63,9 @@ public:
 
     const std::string &get_pkey();
 
-    counted_t<const ql::datum_t> read_row(ql::env_t *env,
-        counted_t<const ql::datum_t> pval, bool use_outdated);
+    counted_t<const ql::datum_t> read_row(
+            signal_t *interruptor, ql::env_t *env,
+            counted_t<const ql::datum_t> pval, bool use_outdated);
     counted_t<ql::datum_stream_t> read_all(
         ql::env_t *env,
         const std::string &sindex,
@@ -104,31 +105,47 @@ public:
         dist_unit_t dist_unit,
         const ql::configured_limits_t &limits);
 
-    counted_t<const ql::datum_t> write_batched_replace(ql::env_t *env,
+    counted_t<const ql::datum_t> write_batched_replace(
+        signal_t *interruptor,
+        ql::env_t *env,
         const std::vector<counted_t<const ql::datum_t> > &keys,
         const counted_t<const ql::func_t> &func,
-        return_changes_t _return_changes, durability_requirement_t durability);
-    counted_t<const ql::datum_t> write_batched_insert(ql::env_t *env,
+        return_changes_t _return_changes,
+        durability_requirement_t durability);
+    counted_t<const ql::datum_t> write_batched_insert(
+        signal_t *interruptor,
+        ql::env_t *env,
         std::vector<counted_t<const ql::datum_t> > &&inserts,
-        conflict_behavior_t conflict_behavior, return_changes_t return_changes,
+        conflict_behavior_t conflict_behavior,
+        return_changes_t return_changes,
         durability_requirement_t durability);
-    bool write_sync_depending_on_durability(ql::env_t *env,
-        durability_requirement_t durability);
+    bool write_sync_depending_on_durability(
+            signal_t *interruptor,
+            ql::env_t *env,
+            durability_requirement_t durability);
 
-    bool sindex_create(ql::env_t *env,
+    bool sindex_create(
+        signal_t *interruptor,
+        ql::env_t *env,
         const std::string &id,
         counted_t<const ql::func_t> index_func,
         sindex_multi_bool_t multi,
         sindex_geo_bool_t geo);
-    bool sindex_drop(ql::env_t *env,
+    bool sindex_drop(
+        signal_t *interruptor,
+        ql::env_t *env,
         const std::string &id);
-    sindex_rename_result_t sindex_rename(ql::env_t *env,
+    sindex_rename_result_t sindex_rename(
+        signal_t *interruptor,
+        ql::env_t *env,
         const std::string &old_name,
         const std::string &new_name,
         bool overwrite);
-    std::vector<std::string> sindex_list(ql::env_t *env);
-    std::map<std::string, counted_t<const ql::datum_t> > sindex_status(ql::env_t *env,
-        const std::set<std::string> &sindexes);
+    std::vector<std::string> sindex_list(signal_t *interruptor, ql::env_t *env);
+    std::map<std::string, counted_t<const ql::datum_t> > sindex_status(
+            signal_t *interruptor,
+            ql::env_t *env,
+            const std::set<std::string> &sindexes);
 
     /* These are not part of the `base_table_t` interface. They wrap the `read()`,
     `read_outdated()`, and `write()` methods of the underlying `namespace_interface_t` to

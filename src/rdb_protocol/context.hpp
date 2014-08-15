@@ -54,7 +54,9 @@ class base_table_t {
 public:
     virtual const std::string &get_pkey() = 0;
 
-    virtual counted_t<const ql::datum_t> read_row(ql::env_t *env,
+    virtual counted_t<const ql::datum_t> read_row(
+        signal_t *interruptor,
+        ql::env_t *env,
         counted_t<const ql::datum_t> pval, bool use_outdated) = 0;
     virtual counted_t<ql::datum_stream_t> read_all(
         ql::env_t *env,
@@ -95,29 +97,48 @@ public:
         dist_unit_t dist_unit,
         const ql::configured_limits_t &limits) = 0;
 
-    virtual counted_t<const ql::datum_t> write_batched_replace(ql::env_t *env,
+    virtual counted_t<const ql::datum_t> write_batched_replace(
+        signal_t *interruptor,
+        ql::env_t *env,
         const std::vector<counted_t<const ql::datum_t> > &keys,
         const counted_t<const ql::func_t> &func,
         return_changes_t _return_changes, durability_requirement_t durability) = 0;
-    virtual counted_t<const ql::datum_t> write_batched_insert(ql::env_t *env,
+    virtual counted_t<const ql::datum_t> write_batched_insert(
+        signal_t *interruptor,
+        ql::env_t *env,
         std::vector<counted_t<const ql::datum_t> > &&inserts,
         conflict_behavior_t conflict_behavior, return_changes_t return_changes,
         durability_requirement_t durability) = 0;
-    virtual bool write_sync_depending_on_durability(ql::env_t *env,
-        durability_requirement_t durability) = 0;
+    virtual bool write_sync_depending_on_durability(
+            signal_t *interruptor,
+            ql::env_t *env,
+            durability_requirement_t durability) = 0;
 
-    virtual bool sindex_create(ql::env_t *env, const std::string &id,
+    virtual bool sindex_create(
+        signal_t *interruptor,
+        ql::env_t *env, const std::string &id,
         counted_t<const ql::func_t> index_func, sindex_multi_bool_t multi,
         sindex_geo_bool_t geo) = 0;
-    virtual bool sindex_drop(ql::env_t *env, const std::string &id) = 0;
-    virtual sindex_rename_result_t sindex_rename(ql::env_t *env,
+    virtual bool sindex_drop(signal_t *interruptor, ql::env_t *env,
+                             const std::string &id) = 0;
+    virtual sindex_rename_result_t sindex_rename(
+        signal_t *interruptor, ql::env_t *env,
         const std::string &old_name, const std::string &new_name, bool overwrite) = 0;
-    virtual std::vector<std::string> sindex_list(ql::env_t *env) = 0;
+    virtual std::vector<std::string> sindex_list(signal_t *interruptor,
+                                                 ql::env_t *env) = 0;
     virtual std::map<std::string, counted_t<const ql::datum_t> > sindex_status(
-        ql::env_t *env, const std::set<std::string> &sindexes) = 0;
+            signal_t *interruptor,
+            ql::env_t *env,
+            const std::set<std::string> &sindexes) = 0;
 
-    /* This must be public */
     virtual ~base_table_t() { }
+
+protected:
+    base_table_t() = default;
+    base_table_t(const base_table_t &) = default;
+    base_table_t(base_table_t &&) = default;
+    base_table_t &operator=(const base_table_t &) = default;
+    base_table_t &operator=(base_table_t &&) = default;
 };
 
 class reql_cluster_interface_t {
@@ -201,4 +222,3 @@ private:
 };
 
 #endif /* RDB_PROTOCOL_CONTEXT_HPP_ */
-

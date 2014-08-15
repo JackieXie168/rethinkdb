@@ -67,11 +67,12 @@ const std::string &real_table_t::get_pkey() {
     return pkey;
 }
 
-counted_t<const ql::datum_t> real_table_t::read_row(ql::env_t *env,
+counted_t<const ql::datum_t> real_table_t::read_row(
+        signal_t *interruptor, ql::env_t *env,
         counted_t<const ql::datum_t> pval, bool use_outdated) {
     read_t read(point_read_t(store_key_t(pval->print_primary())), env->profile());
     read_response_t res;
-    read_with_profile(env->interruptor, env, read, &res, use_outdated);
+    read_with_profile(interruptor, env, read, &res, use_outdated);
     point_read_response_t *p_res = boost::get<point_read_response_t>(&res.response);
     r_sanity_check(p_res);
     return p_res->data;
@@ -214,10 +215,13 @@ counted_t<ql::datum_stream_t> real_table_t::read_nearest(
         std::move(formatted_result).to_counted(), bt);
 }
 
-counted_t<const ql::datum_t> real_table_t::write_batched_replace(ql::env_t *env,
+counted_t<const ql::datum_t> real_table_t::write_batched_replace(
+        signal_t *interruptor,
+        ql::env_t *env,
         const std::vector<counted_t<const ql::datum_t> > &keys,
         const counted_t<const ql::func_t> &func,
-        return_changes_t return_changes, durability_requirement_t durability) {
+        return_changes_t return_changes,
+        durability_requirement_t durability) {
     std::vector<store_key_t> store_keys;
     store_keys.reserve(keys.size());
     for (auto it = keys.begin(); it != keys.end(); it++) {
@@ -227,13 +231,15 @@ counted_t<const ql::datum_t> real_table_t::write_batched_replace(ql::env_t *env,
             env->global_optargs.get_all_optargs(), return_changes);
     write_t w(std::move(write), durability, env->profile(), env->limits);
     write_response_t response;
-    write_with_profile(env->interruptor, env, &w, &response);
+    write_with_profile(interruptor, env, &w, &response);
     auto dp = boost::get<counted_t<const ql::datum_t> >(&response.response);
     r_sanity_check(dp != NULL);
     return *dp;
 }
 
-counted_t<const ql::datum_t> real_table_t::write_batched_insert(ql::env_t *env,
+counted_t<const ql::datum_t> real_table_t::write_batched_insert(
+        signal_t *interruptor,
+        ql::env_t *env,
         std::vector<counted_t<const ql::datum_t> > &&inserts,
         conflict_behavior_t conflict_behavior, return_changes_t return_changes,
         durability_requirement_t durability) {
@@ -241,47 +247,52 @@ counted_t<const ql::datum_t> real_table_t::write_batched_insert(ql::env_t *env,
         return_changes);
     write_t w(std::move(write), durability, env->profile(), env->limits);
     write_response_t response;
-    write_with_profile(env->interruptor, env, &w, &response);
+    write_with_profile(interruptor, env, &w, &response);
     auto dp = boost::get<counted_t<const ql::datum_t> >(&response.response);
     r_sanity_check(dp != NULL);
     return *dp;
 }
 
-bool real_table_t::write_sync_depending_on_durability(ql::env_t *env,
+bool real_table_t::write_sync_depending_on_durability(
+        signal_t *interruptor,
+        ql::env_t *env,
         durability_requirement_t durability) {
     write_t write(sync_t(), durability, env->profile(), env->limits);
     write_response_t res;
-    write_with_profile(env->interruptor, env, &write, &res);
+    write_with_profile(interruptor, env, &write, &res);
     sync_response_t *response = boost::get<sync_response_t>(&res.response);
     r_sanity_check(response);
     return true; // With our current implementation, a sync can never fail.
 }
 
-bool real_table_t::sindex_create(ql::env_t *env, const std::string &id,
+bool real_table_t::sindex_create(
+        signal_t *interruptor, ql::env_t *env, const std::string &id,
         counted_t<const ql::func_t> index_func, sindex_multi_bool_t multi,
         sindex_geo_bool_t geo) {
     ql::map_wire_func_t wire_func(index_func);
     write_t write(sindex_create_t(id, wire_func, multi, geo), env->profile(),
                   env->limits);
     write_response_t res;
-    write_with_profile(env->interruptor, env, &write, &res);
+    write_with_profile(interruptor, env, &write, &res);
     sindex_create_response_t *response =
         boost::get<sindex_create_response_t>(&res.response);
     r_sanity_check(response);
     return response->success;
 }
 
-bool real_table_t::sindex_drop(ql::env_t *env, const std::string &id) {
+bool real_table_t::sindex_drop(signal_t *interruptor, ql::env_t *env,
+                               const std::string &id) {
     write_t write(sindex_drop_t(id), env->profile(), env->limits);
     write_response_t res;
-    write_with_profile(env->interruptor, env, &write, &res);
+    write_with_profile(interruptor, env, &write, &res);
     sindex_drop_response_t *response =
         boost::get<sindex_drop_response_t>(&res.response);
     r_sanity_check(response);
     return response->success;
 }
 
-sindex_rename_result_t real_table_t::sindex_rename(ql::env_t *env,
+sindex_rename_result_t real_table_t::sindex_rename(signal_t *interruptor,
+                                                   ql::env_t *env,
                                                    const std::string &old_name,
                                                    const std::string &new_name,
                                                    bool overwrite) {
@@ -289,18 +300,19 @@ sindex_rename_result_t real_table_t::sindex_rename(ql::env_t *env,
                   env->profile(),
                   env->limits);
     write_response_t res;
-    write_with_profile(env->interruptor, env, &write, &res);
+    write_with_profile(interruptor, env, &write, &res);
     sindex_rename_response_t *response =
         boost::get<sindex_rename_response_t>(&res.response);
     r_sanity_check(response);
     return response->result;
 }
 
-std::vector<std::string> real_table_t::sindex_list(ql::env_t *env) {
+std::vector<std::string> real_table_t::sindex_list(signal_t *interruptor,
+                                                   ql::env_t *env) {
     sindex_list_t sindex_list;
     read_t read(sindex_list, env->profile());
     read_response_t res;
-    read_with_profile(env->interruptor, env, read, &res, false);
+    read_with_profile(interruptor, env, read, &res, false);
     sindex_list_response_t *s_res =
         boost::get<sindex_list_response_t>(&res.response);
     r_sanity_check(s_res);
@@ -308,11 +320,12 @@ std::vector<std::string> real_table_t::sindex_list(ql::env_t *env) {
 }
 
 std::map<std::string, counted_t<const ql::datum_t> >
-real_table_t::sindex_status(ql::env_t *env, const std::set<std::string> &sindexes) {
+real_table_t::sindex_status(signal_t *interruptor, ql::env_t *env,
+                            const std::set<std::string> &sindexes) {
     sindex_status_t sindex_status(sindexes);
     read_t read(sindex_status, env->profile());
     read_response_t res;
-    read_with_profile(env->interruptor, env, read, &res, false);
+    read_with_profile(interruptor, env, read, &res, false);
     auto s_res = boost::get<sindex_status_response_t>(&res.response);
     r_sanity_check(s_res);
     std::map<std::string, counted_t<const ql::datum_t> > statuses;

@@ -71,6 +71,7 @@ counted_t<const datum_t> table_t::batched_replace(
         return std::move(result).to_counted();
     } else {
         return table->write_batched_replace(
+            env->interruptor,
             env, keys, replacement_generator, return_changes,
             durability_requirement);
     }
@@ -105,7 +106,8 @@ counted_t<const datum_t> table_t::batched_insert(
 
     counted_t<const datum_t> insert_stats =
         table->write_batched_insert(
-            env, std::move(valid_inserts), conflict_behavior, return_changes,
+            env->interruptor, env, std::move(valid_inserts),
+            conflict_behavior, return_changes,
             durability_requirement);
     std::set<std::string> conditions;
     counted_t<const datum_t> merged
@@ -122,22 +124,22 @@ MUST_USE bool table_t::sindex_create(env_t *env,
                                      sindex_multi_bool_t multi,
                                      sindex_geo_bool_t geo) {
     index_func->assert_deterministic("Index functions must be deterministic.");
-    return table->sindex_create(env, id, index_func, multi, geo);
+    return table->sindex_create(env->interruptor, env, id, index_func, multi, geo);
 }
 
 MUST_USE bool table_t::sindex_drop(env_t *env, const std::string &id) {
-    return table->sindex_drop(env, id);
+    return table->sindex_drop(env->interruptor, env, id);
 }
 
 MUST_USE sindex_rename_result_t table_t::sindex_rename(env_t *env,
                                                        const std::string &old_name,
                                                        const std::string &new_name,
                                                        bool overwrite) {
-    return table->sindex_rename(env, old_name, new_name, overwrite);
+    return table->sindex_rename(env->interruptor, env, old_name, new_name, overwrite);
 }
 
 counted_t<const datum_t> table_t::sindex_list(env_t *env) {
-    std::vector<std::string> sindexes = table->sindex_list(env);
+    std::vector<std::string> sindexes = table->sindex_list(env->interruptor, env);
     std::vector<counted_t<const datum_t> > array;
     array.reserve(sindexes.size());
     for (std::vector<std::string>::const_iterator it = sindexes.begin();
@@ -150,7 +152,7 @@ counted_t<const datum_t> table_t::sindex_list(env_t *env) {
 counted_t<const datum_t> table_t::sindex_status(env_t *env,
         std::set<std::string> sindexes) {
     std::map<std::string, counted_t<const datum_t> > statuses =
-        table->sindex_status(env, sindexes);
+        table->sindex_status(env->interruptor, env, sindexes);
     std::vector<counted_t<const datum_t> > array;
     for (auto it = statuses.begin(); it != statuses.end(); ++it) {
         r_sanity_check(std_contains(sindexes, it->first) || sindexes.empty());
@@ -180,7 +182,7 @@ MUST_USE bool table_t::sync(env_t *env, const rcheckable_t *parent) {
 MUST_USE bool table_t::sync_depending_on_durability(env_t *env,
                 durability_requirement_t durability_requirement) {
     return table->write_sync_depending_on_durability(
-        env, durability_requirement);
+            env->interruptor, env, durability_requirement);
 }
 
 const std::string &table_t::get_pkey() {
@@ -188,7 +190,7 @@ const std::string &table_t::get_pkey() {
 }
 
 counted_t<const datum_t> table_t::get_row(env_t *env, counted_t<const datum_t> pval) {
-    return table->read_row(env, pval, use_outdated);
+    return table->read_row(env->interruptor, env, pval, use_outdated);
 }
 
 counted_t<datum_stream_t> table_t::get_all(
