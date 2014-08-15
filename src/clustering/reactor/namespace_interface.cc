@@ -6,7 +6,6 @@
 #include "clustering/immediate_consistency/query/master_access.hpp"
 #include "concurrency/fifo_enforcer.hpp"
 #include "concurrency/watchable.hpp"
-#include "rdb_protocol/env.hpp"
 
 cluster_namespace_interface_t::cluster_namespace_interface_t(
         mailbox_manager_t *mm,
