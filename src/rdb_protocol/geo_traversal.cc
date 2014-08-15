@@ -71,6 +71,7 @@ void geo_intersecting_cb_t::init_query(const counted_t<const ql::datum_t> &_quer
         compute_index_grid_keys(_query_geometry, QUERYING_GOAL_GRID_CELLS));
 }
 
+// RSI: This unused interruptor parameter is weird.
 void geo_intersecting_cb_t::on_candidate(
         const btree_key_t *key,
         const void *value,

@@ -3,13 +3,12 @@
 
 #include <map>
 
+#include "debug.hpp"
 #include "rdb_protocol/batching.hpp"
 #include "rdb_protocol/env.hpp"
 #include "rdb_protocol/func.hpp"
 #include "rdb_protocol/term.hpp"
 #include "rdb_protocol/val.hpp"
-
-#include "debug.hpp"
 
 namespace ql {
 
@@ -68,7 +67,7 @@ void reader_t::accumulate_all(env_t *env, eager_acc_t *acc) {
 
 rget_read_response_t reader_t::do_read(env_t *env, const read_t &read) {
     read_response_t res;
-    table.read_with_profile(env, read, &res, use_outdated);
+    table.read_with_profile(env->interruptor, env, read, &res, use_outdated);
     auto rget_res = boost::get<rget_read_response_t>(&res.response);
     r_sanity_check(rget_res != NULL);
     if (auto e = boost::get<exc_t>(&rget_res->result)) {

@@ -268,6 +268,7 @@ counted_t<datum_stream_t> table_t::get_intersecting(
     r_sanity_check(bounds.is_universe());
 
     return table->read_intersecting(
+        env->interruptor,
         env,
         *sindex_id,
         parent->backtrace(),
@@ -295,6 +296,7 @@ counted_t<datum_stream_t> table_t::get_nearest(
     r_sanity_check(bounds.is_universe());
 
     return table->read_nearest(
+        env->interruptor,
         env,
         *sindex_id,
         parent->backtrace(),

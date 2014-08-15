@@ -50,9 +50,7 @@ private:
     threadnum_t thread;
 };
 
-class real_table_t :
-    public base_table_t
-{
+class real_table_t : public base_table_t {
 public:
     /* This doesn't automatically wait for readiness. */
     real_table_t(
@@ -85,6 +83,7 @@ public:
         const ql::protob_t<const Backtrace> &bt,
         const std::string &table_name);
     counted_t<ql::datum_stream_t> read_intersecting(
+        signal_t *interruptor,
         ql::env_t *env,
         const std::string &sindex,
         const ql::protob_t<const Backtrace> &bt,
@@ -92,6 +91,7 @@ public:
         bool use_outdated,
         const counted_t<const ql::datum_t> &query_geometry);
     counted_t<ql::datum_stream_t> read_nearest(
+        signal_t *interruptor,
         ql::env_t *env,
         const std::string &sindex,
         const ql::protob_t<const Backtrace> &bt,
@@ -140,9 +140,13 @@ public:
       * splitter_t::give_splits with the event logs from the shards
     These are public because some of the stuff in `datum_stream.hpp` needs to be
     able to access them. */
-    void read_with_profile(ql::env_t *env, const read_t &, read_response_t *response,
-            bool outdated);
-    void write_with_profile(ql::env_t *env, write_t *, write_response_t *response);
+    void read_with_profile(signal_t *interruptor, ql::env_t *env,
+                           const read_t &read, read_response_t *response,
+                           bool outdated);
+    void write_with_profile(signal_t *interruptor,
+                            ql::env_t *env,
+                            write_t *write,
+                            write_response_t *response);
 
 private:
     namespace_id_t uuid;

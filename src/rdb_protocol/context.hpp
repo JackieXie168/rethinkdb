@@ -74,6 +74,7 @@ public:
         const ql::protob_t<const Backtrace> &bt,
         const std::string &table_name) = 0;
     virtual counted_t<ql::datum_stream_t> read_intersecting(
+        signal_t *interruptor,
         ql::env_t *env,
         const std::string &sindex,
         const ql::protob_t<const Backtrace> &bt,
@@ -81,6 +82,7 @@ public:
         bool use_outdated,
         const counted_t<const ql::datum_t> &query_geometry) = 0;
     virtual counted_t<ql::datum_stream_t> read_nearest(
+        signal_t *interruptor,
         ql::env_t *env,
         const std::string &sindex,
         const ql::protob_t<const Backtrace> &bt,

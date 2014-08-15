@@ -71,7 +71,7 @@ counted_t<const ql::datum_t> real_table_t::read_row(ql::env_t *env,
         counted_t<const ql::datum_t> pval, bool use_outdated) {
     read_t read(point_read_t(store_key_t(pval->print_primary())), env->profile());
     read_response_t res;
-    read_with_profile(env, read, &res, use_outdated);
+    read_with_profile(env->interruptor, env, read, &res, use_outdated);
     point_read_response_t *p_res = boost::get<point_read_response_t>(&res.response);
     r_sanity_check(p_res);
     return p_res->data;
@@ -117,6 +117,7 @@ counted_t<ql::datum_stream_t> real_table_t::read_all_changes(ql::env_t *env,
 }
 
 counted_t<ql::datum_stream_t> real_table_t::read_intersecting(
+        signal_t *interruptor,
         ql::env_t *env,
         const std::string &sindex,
         const ql::protob_t<const Backtrace> &bt,
@@ -130,10 +131,10 @@ counted_t<ql::datum_stream_t> real_table_t::read_intersecting(
     read_response_t res;
     try {
         if (use_outdated) {
-            namespace_access.get()->read_outdated(read, &res, env->interruptor);
+            namespace_access.get()->read_outdated(read, &res, interruptor);
         } else {
             namespace_access.get()->read(
-                read, &res, order_token_t::ignore, env->interruptor);
+                read, &res, order_token_t::ignore, interruptor);
         }
     } catch (const cannot_perform_query_exc_t &ex) {
         rfail_datum(ql::base_exc_t::GENERIC, "Cannot perform read: %s", ex.what());
@@ -154,6 +155,7 @@ counted_t<ql::datum_stream_t> real_table_t::read_intersecting(
 }
 
 counted_t<ql::datum_stream_t> real_table_t::read_nearest(
+        signal_t *interruptor,
         ql::env_t *env,
         const std::string &sindex,
         const ql::protob_t<const Backtrace> &bt,
@@ -173,10 +175,10 @@ counted_t<ql::datum_stream_t> real_table_t::read_nearest(
     read_response_t res;
     try {
         if (use_outdated) {
-            namespace_access.get()->read_outdated(read, &res, env->interruptor);
+            namespace_access.get()->read_outdated(read, &res, interruptor);
         } else {
             namespace_access.get()->read(
-                read, &res, order_token_t::ignore, env->interruptor);
+                read, &res, order_token_t::ignore, interruptor);
         }
     } catch (const cannot_perform_query_exc_t &ex) {
         rfail_datum(ql::base_exc_t::GENERIC, "Cannot perform read: %s", ex.what());
@@ -225,7 +227,7 @@ counted_t<const ql::datum_t> real_table_t::write_batched_replace(ql::env_t *env,
             env->global_optargs.get_all_optargs(), return_changes);
     write_t w(std::move(write), durability, env->profile(), env->limits);
     write_response_t response;
-    write_with_profile(env, &w, &response);
+    write_with_profile(env->interruptor, env, &w, &response);
     auto dp = boost::get<counted_t<const ql::datum_t> >(&response.response);
     r_sanity_check(dp != NULL);
     return *dp;
@@ -239,7 +241,7 @@ counted_t<const ql::datum_t> real_table_t::write_batched_insert(ql::env_t *env,
         return_changes);
     write_t w(std::move(write), durability, env->profile(), env->limits);
     write_response_t response;
-    write_with_profile(env, &w, &response);
+    write_with_profile(env->interruptor, env, &w, &response);
     auto dp = boost::get<counted_t<const ql::datum_t> >(&response.response);
     r_sanity_check(dp != NULL);
     return *dp;
@@ -249,7 +251,7 @@ bool real_table_t::write_sync_depending_on_durability(ql::env_t *env,
         durability_requirement_t durability) {
     write_t write(sync_t(), durability, env->profile(), env->limits);
     write_response_t res;
-    write_with_profile(env, &write, &res);
+    write_with_profile(env->interruptor, env, &write, &res);
     sync_response_t *response = boost::get<sync_response_t>(&res.response);
     r_sanity_check(response);
     return true; // With our current implementation, a sync can never fail.
@@ -262,7 +264,7 @@ bool real_table_t::sindex_create(ql::env_t *env, const std::string &id,
     write_t write(sindex_create_t(id, wire_func, multi, geo), env->profile(),
                   env->limits);
     write_response_t res;
-    write_with_profile(env, &write, &res);
+    write_with_profile(env->interruptor, env, &write, &res);
     sindex_create_response_t *response =
         boost::get<sindex_create_response_t>(&res.response);
     r_sanity_check(response);
@@ -272,7 +274,7 @@ bool real_table_t::sindex_create(ql::env_t *env, const std::string &id,
 bool real_table_t::sindex_drop(ql::env_t *env, const std::string &id) {
     write_t write(sindex_drop_t(id), env->profile(), env->limits);
     write_response_t res;
-    write_with_profile(env, &write, &res);
+    write_with_profile(env->interruptor, env, &write, &res);
     sindex_drop_response_t *response =
         boost::get<sindex_drop_response_t>(&res.response);
     r_sanity_check(response);
@@ -287,7 +289,7 @@ sindex_rename_result_t real_table_t::sindex_rename(ql::env_t *env,
                   env->profile(),
                   env->limits);
     write_response_t res;
-    write_with_profile(env, &write, &res);
+    write_with_profile(env->interruptor, env, &write, &res);
     sindex_rename_response_t *response =
         boost::get<sindex_rename_response_t>(&res.response);
     r_sanity_check(response);
@@ -298,7 +300,7 @@ std::vector<std::string> real_table_t::sindex_list(ql::env_t *env) {
     sindex_list_t sindex_list;
     read_t read(sindex_list, env->profile());
     read_response_t res;
-    read_with_profile(env, read, &res, false);
+    read_with_profile(env->interruptor, env, read, &res, false);
     sindex_list_response_t *s_res =
         boost::get<sindex_list_response_t>(&res.response);
     r_sanity_check(s_res);
@@ -310,7 +312,7 @@ real_table_t::sindex_status(ql::env_t *env, const std::set<std::string> &sindexe
     sindex_status_t sindex_status(sindexes);
     read_t read(sindex_status, env->profile());
     read_response_t res;
-    read_with_profile(env, read, &res, false);
+    read_with_profile(env->interruptor, env, read, &res, false);
     auto s_res = boost::get<sindex_status_response_t>(&res.response);
     r_sanity_check(s_res);
     std::map<std::string, counted_t<const ql::datum_t> > statuses;
@@ -342,8 +344,12 @@ real_table_t::sindex_status(ql::env_t *env, const std::set<std::string> &sindexe
     return statuses;
 }
 
-void real_table_t::read_with_profile(ql::env_t *env, const read_t &read,
-        read_response_t *response, bool outdated) {
+void real_table_t::read_with_profile(
+        signal_t *interruptor,
+        ql::env_t *env,
+        const read_t &read,
+        read_response_t *response,
+        bool outdated) {
     profile::starter_t starter(
         (outdated ? "Perform outdated read." : "Perform read."),
         env->trace);
@@ -353,10 +359,10 @@ void real_table_t::read_with_profile(ql::env_t *env, const read_t &read,
     /* Do the actual read. */
     try {
         if (!outdated) {
-            namespace_access.get()->read(read, response, order_token_t::ignore,
-                env->interruptor);
+            namespace_access.get()->read(
+                    read, response, order_token_t::ignore, interruptor);
         } else {
-            namespace_access.get()->read_outdated(read, response, env->interruptor);
+            namespace_access.get()->read_outdated(read, response, interruptor);
         }
     } catch (const cannot_perform_query_exc_t &e) {
         rfail_datum(ql::base_exc_t::GENERIC, "Cannot perform read: %s", e.what());
@@ -365,7 +371,8 @@ void real_table_t::read_with_profile(ql::env_t *env, const read_t &read,
     splitter.give_splits(response->n_shards, response->event_log);
 }
 
-void real_table_t::write_with_profile(ql::env_t *env, write_t *write,
+void real_table_t::write_with_profile(
+        signal_t *interruptor, ql::env_t *env, write_t *write,
         write_response_t *response) {
     profile::starter_t starter("Perform write", env->trace);
     profile::splitter_t splitter(env->trace);
@@ -373,8 +380,8 @@ void real_table_t::write_with_profile(ql::env_t *env, write_t *write,
     write->profile = env->profile();
     /* Do the actual write. */
     try {
-        namespace_access.get()->write(*write, response, order_token_t::ignore,
-            env->interruptor);
+        namespace_access.get()->write(
+                *write, response, order_token_t::ignore, interruptor);
     } catch (const cannot_perform_query_exc_t &e) {
         rfail_datum(ql::base_exc_t::GENERIC, "Cannot perform write: %s", e.what());
     }
