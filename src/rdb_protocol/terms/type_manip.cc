@@ -349,7 +349,7 @@ private:
             b |= info.add("name", make_counted<datum_t>(std::string(table->name)));
             b |= info.add("primary_key",
                           make_counted<datum_t>(std::string(table->get_pkey())));
-            b |= info.add("indexes", table->sindex_list(env->env));
+            b |= info.add("indexes", table->sindex_list(env->interruptor, env->env));
             b |= info.add("db", val_info(env, new_val(table->db)));
         } break;
         case SELECTION_TYPE: {

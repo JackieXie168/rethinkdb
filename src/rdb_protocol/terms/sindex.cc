@@ -99,7 +99,8 @@ public:
                 : sindex_geo_bool_t::REGULAR;
         }
 
-        bool success = table->sindex_create(env->env, name, index_func, multi, geo);
+        bool success = table->sindex_create(env->interruptor, env->env, name,
+                                            index_func, multi, geo);
 
         if (success) {
             datum_object_builder_t res;
@@ -122,7 +123,7 @@ public:
     virtual counted_t<val_t> eval_impl(scope_env_t *env, args_t *args, eval_flags_t) const {
         counted_t<table_t> table = args->arg(env, 0)->as_table();
         std::string name = args->arg(env, 1)->as_datum()->as_str().to_std();
-        bool success = table->sindex_drop(env->env, name);
+        bool success = table->sindex_drop(env->interruptor, env->env, name);
         if (success) {
             datum_object_builder_t res;
             UNUSED bool b = res.add("dropped", make_counted<datum_t>(1.0));
@@ -144,7 +145,7 @@ public:
     virtual counted_t<val_t> eval_impl(scope_env_t *env, args_t *args, eval_flags_t) const {
         counted_t<table_t> table = args->arg(env, 0)->as_table();
 
-        return new_val(table->sindex_list(env->env));
+        return new_val(table->sindex_list(env->interruptor, env->env));
     }
 
     virtual const char *name() const { return "sindex_list"; }
@@ -161,7 +162,7 @@ public:
         for (size_t i = 1; i < args->num_args(); ++i) {
             sindexes.insert(args->arg(env, i)->as_str().to_std());
         }
-        return new_val(table->sindex_status(env->env, sindexes));
+        return new_val(table->sindex_status(env->interruptor, env->env, sindexes));
     }
 
     virtual const char *name() const { return "sindex_status"; }
@@ -196,7 +197,7 @@ public:
         int64_t current_poll_ms = initial_poll_ms;
         for (;;) {
             counted_t<const datum_t> statuses =
-                table->sindex_status(env->env, sindexes);
+                table->sindex_status(env->interruptor, env->env, sindexes);
             if (all_ready(statuses)) {
                 return new_val(statuses);
             } else {
@@ -232,8 +233,9 @@ public:
         counted_t<val_t> overwrite_val = args->optarg(env, "overwrite");
         bool overwrite = overwrite_val ? overwrite_val->as_bool() : false;
 
-        sindex_rename_result_t result = table->sindex_rename(env->env, old_name,
-                                                             new_name, overwrite);
+        sindex_rename_result_t result
+            = table->sindex_rename(env->interruptor, env->env, old_name,
+                                   new_name, overwrite);
 
         switch (result) {
         case sindex_rename_result_t::SUCCESS: {

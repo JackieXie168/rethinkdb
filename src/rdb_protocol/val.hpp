@@ -34,7 +34,8 @@ public:
     counted_t<datum_stream_t> as_datum_stream(env_t *env,
                                               const protob_t<const Backtrace> &bt);
     const std::string &get_pkey();
-    counted_t<const datum_t> get_row(env_t *env, counted_t<const datum_t> pval);
+    counted_t<const datum_t> get_row(
+            signal_t *interruptor, env_t *env, counted_t<const datum_t> pval);
     counted_t<datum_stream_t> get_all(
             env_t *env,
             counted_t<const datum_t> value,
@@ -48,11 +49,13 @@ public:
             const std::string &new_sindex_id,
             const rcheckable_t *parent);
     counted_t<datum_stream_t> get_intersecting(
+            signal_t *interruptor,
             env_t *env,
             const counted_t<const datum_t> &query_geometry,
             const std::string &new_sindex_id,
             const pb_rcheckable_t *parent);
     counted_t<datum_stream_t> get_nearest(
+            signal_t *interruptor,
             env_t *env,
             lat_lon_point_t center,
             double max_dist,
@@ -66,6 +69,7 @@ public:
     counted_t<const datum_t> make_error_datum(const base_exc_t &exception);
 
     counted_t<const datum_t> batched_replace(
+        signal_t *interruptor,
         env_t *env,
         const std::vector<counted_t<const datum_t> > &vals,
         const std::vector<counted_t<const datum_t> > &keys,
@@ -75,6 +79,7 @@ public:
         return_changes_t return_changes);
 
     counted_t<const datum_t> batched_insert(
+        signal_t *interruptor,
         env_t *env,
         std::vector<counted_t<const datum_t> > &&insert_datums,
         conflict_behavior_t conflict_behavior,
@@ -82,26 +87,28 @@ public:
         return_changes_t return_changes);
 
     MUST_USE bool sindex_create(
+        signal_t *interruptor,
         env_t *env, const std::string &name,
         counted_t<const func_t> index_func, sindex_multi_bool_t multi,
         sindex_geo_bool_t geo);
-    MUST_USE bool sindex_drop(env_t *env, const std::string &name);
+    MUST_USE bool sindex_drop(signal_t *interruptor,
+                              env_t *env, const std::string &name);
     MUST_USE sindex_rename_result_t sindex_rename(
+        signal_t *interruptor,
         env_t *env, const std::string &old_name,
         const std::string &new_name, bool overwrite);
-    counted_t<const datum_t> sindex_list(env_t *env);
-    counted_t<const datum_t> sindex_status(env_t *env,
-        std::set<std::string> sindex);
-    MUST_USE bool sync(env_t *env, const rcheckable_t *parent);
+    counted_t<const datum_t> sindex_list(signal_t *interruptor,
+                                         env_t *env);
+    counted_t<const datum_t> sindex_status(signal_t *interruptor,
+                                           env_t *env,
+                                           std::set<std::string> sindex);
+    MUST_USE bool sync(signal_t *interruptor,
+                       env_t *env,
+                       const rcheckable_t *parent);
 
-    /* `db` and `name` are for display purposes only */
-    counted_t<const db_t> db;
-    const std::string name;
-    std::string display_name() {
+    std::string display_name() const {
         return db->name + "." + name;
     }
-
-    scoped_ptr_t<base_table_t> table;
 
 private:
     friend class distinct_term_t;
@@ -114,8 +121,18 @@ private:
         durability_requirement_t durability_requirement);
 
     MUST_USE bool sync_depending_on_durability(
-        env_t *env, durability_requirement_t durability_requirement);
+        signal_t *interruptor, env_t *env,
+        durability_requirement_t durability_requirement);
 
+public:
+    // TODO(2014-08): These should not be public.
+    /* `db` and `name` are for display purposes only */
+    counted_t<const db_t> db;
+    const std::string name;
+
+    scoped_ptr_t<base_table_t> table;
+
+private:
     bool use_outdated;
 
     boost::optional<std::string> sindex_id;

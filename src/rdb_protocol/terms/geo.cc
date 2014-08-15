@@ -331,8 +331,8 @@ private:
         std::string index_str = index->as_str().to_std();
 
         counted_t<datum_stream_t> stream = table->get_intersecting(
-            env->env, query_arg->as_ptype(pseudo::geometry_string), index_str,
-            this);
+            env->interruptor, env->env, query_arg->as_ptype(pseudo::geometry_string),
+            index_str, this);
         return new_val(stream, table);
     }
     virtual const char *name() const { return "get_intersecting"; }
@@ -391,6 +391,7 @@ private:
         }
 
         counted_t<datum_stream_t> stream = table->get_nearest(
+                env->interruptor,
                 env->env, center, max_dist, max_results, reference_ellipsoid,
                 dist_unit, index_str, this, env->env->limits);
         return new_val(stream, table);

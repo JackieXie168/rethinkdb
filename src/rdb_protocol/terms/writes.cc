@@ -124,7 +124,7 @@ private:
                     // TODO: that solution sucks.
                 }
                 counted_t<const datum_t> replace_stats = t->batched_insert(
-                    env->env, std::move(datums), conflict_behavior,
+                    env->interruptor, env->env, std::move(datums), conflict_behavior,
                     durability_requirement, return_changes);
                 stats = stats->merge(replace_stats, stats_merge, env->env->limits, &conditions);
                 done = true;
@@ -153,7 +153,7 @@ private:
                 }
 
                 counted_t<const datum_t> replace_stats = t->batched_insert(
-                    env->env, std::move(datums), conflict_behavior, durability_requirement, return_changes);
+                    env->interruptor, env->env, std::move(datums), conflict_behavior, durability_requirement, return_changes);
                 stats = stats->merge(replace_stats, stats_merge, env->env->limits, &conditions);
             }
         }
@@ -231,7 +231,7 @@ private:
             vals.push_back(orig_val);
             keys.push_back(orig_key);
             counted_t<const datum_t> replace_stats = tblrow.first->batched_replace(
-                env->env, vals, keys, f,
+                env->interruptor, env->env, vals, keys, f,
                 nondet_ok, durability_requirement, return_changes);
             stats = stats->merge(replace_stats, stats_merge, env->env->limits, &conditions);
         } else {
@@ -253,7 +253,7 @@ private:
                     keys.push_back((*it)->get(tbl->get_pkey()));
                 }
                 counted_t<const datum_t> replace_stats = tbl->batched_replace(
-                    env->env, vals, keys,
+                    env->interruptor, env->env, vals, keys,
                     f, nondet_ok, durability_requirement, return_changes);
                 stats = stats->merge(replace_stats, stats_merge, env->env->limits, &conditions);
             }

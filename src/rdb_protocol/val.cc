@@ -30,6 +30,7 @@ counted_t<const datum_t> table_t::make_error_datum(const base_exc_t &exception) 
 }
 
 counted_t<const datum_t> table_t::batched_replace(
+    signal_t *interruptor,
     env_t *env,
     const std::vector<counted_t<const datum_t> > &vals,
     const std::vector<counted_t<const datum_t> > &keys,
@@ -51,7 +52,7 @@ counted_t<const datum_t> table_t::batched_replace(
         for (size_t i = 0; i < vals.size(); ++i) {
             counted_t<const datum_t> new_val;
             try {
-                new_val = replacement_generator->call(env->interruptor, env, vals[i])->as_datum();
+                new_val = replacement_generator->call(interruptor, env, vals[i])->as_datum();
                 new_val->rcheck_valid_replace(vals[i], keys[i], get_pkey());
                 r_sanity_check(new_val.has());
                 replacement_values.push_back(new_val);
@@ -60,8 +61,8 @@ counted_t<const datum_t> table_t::batched_replace(
             }
         }
         counted_t<const datum_t> insert_stats = batched_insert(
-            env, std::move(replacement_values), conflict_behavior_t::REPLACE,
-            durability_requirement, return_changes);
+            interruptor, env, std::move(replacement_values),
+            conflict_behavior_t::REPLACE, durability_requirement, return_changes);
         std::set<std::string> conditions;
         counted_t<const datum_t> merged
             = std::move(stats).to_counted()->merge(insert_stats, stats_merge,
@@ -71,13 +72,14 @@ counted_t<const datum_t> table_t::batched_replace(
         return std::move(result).to_counted();
     } else {
         return table->write_batched_replace(
-            env->interruptor,
+            interruptor,
             env, keys, replacement_generator, return_changes,
             durability_requirement);
     }
 }
 
 counted_t<const datum_t> table_t::batched_insert(
+    signal_t *interruptor,
     env_t *env,
     std::vector<counted_t<const datum_t> > &&insert_datums,
     conflict_behavior_t conflict_behavior,
@@ -106,7 +108,7 @@ counted_t<const datum_t> table_t::batched_insert(
 
     counted_t<const datum_t> insert_stats =
         table->write_batched_insert(
-            env->interruptor, env, std::move(valid_inserts),
+            interruptor, env, std::move(valid_inserts),
             conflict_behavior, return_changes,
             durability_requirement);
     std::set<std::string> conditions;
@@ -118,28 +120,30 @@ counted_t<const datum_t> table_t::batched_insert(
     return std::move(result).to_counted();
 }
 
-MUST_USE bool table_t::sindex_create(env_t *env,
+MUST_USE bool table_t::sindex_create(signal_t *interruptor,
+                                     env_t *env,
                                      const std::string &id,
                                      counted_t<const func_t> index_func,
                                      sindex_multi_bool_t multi,
                                      sindex_geo_bool_t geo) {
     index_func->assert_deterministic("Index functions must be deterministic.");
-    return table->sindex_create(env->interruptor, env, id, index_func, multi, geo);
+    return table->sindex_create(interruptor, env, id, index_func, multi, geo);
 }
 
-MUST_USE bool table_t::sindex_drop(env_t *env, const std::string &id) {
-    return table->sindex_drop(env->interruptor, env, id);
+MUST_USE bool table_t::sindex_drop(signal_t *interruptor, env_t *env, const std::string &id) {
+    return table->sindex_drop(interruptor, env, id);
 }
 
-MUST_USE sindex_rename_result_t table_t::sindex_rename(env_t *env,
+MUST_USE sindex_rename_result_t table_t::sindex_rename(signal_t *interruptor,
+                                                       env_t *env,
                                                        const std::string &old_name,
                                                        const std::string &new_name,
                                                        bool overwrite) {
-    return table->sindex_rename(env->interruptor, env, old_name, new_name, overwrite);
+    return table->sindex_rename(interruptor, env, old_name, new_name, overwrite);
 }
 
-counted_t<const datum_t> table_t::sindex_list(env_t *env) {
-    std::vector<std::string> sindexes = table->sindex_list(env->interruptor, env);
+counted_t<const datum_t> table_t::sindex_list(signal_t *interruptor, env_t *env) {
+    std::vector<std::string> sindexes = table->sindex_list(interruptor, env);
     std::vector<counted_t<const datum_t> > array;
     array.reserve(sindexes.size());
     for (std::vector<std::string>::const_iterator it = sindexes.begin();
@@ -149,10 +153,12 @@ counted_t<const datum_t> table_t::sindex_list(env_t *env) {
     return make_counted<datum_t>(std::move(array), env->limits);
 }
 
-counted_t<const datum_t> table_t::sindex_status(env_t *env,
+counted_t<const datum_t> table_t::sindex_status(
+        signal_t *interruptor,
+        env_t *env,
         std::set<std::string> sindexes) {
     std::map<std::string, counted_t<const datum_t> > statuses =
-        table->sindex_status(env->interruptor, env, sindexes);
+        table->sindex_status(interruptor, env, sindexes);
     std::vector<counted_t<const datum_t> > array;
     for (auto it = statuses.begin(); it != statuses.end(); ++it) {
         r_sanity_check(std_contains(sindexes, it->first) || sindexes.empty());
@@ -170,27 +176,31 @@ counted_t<const datum_t> table_t::sindex_status(env_t *env,
     return make_counted<const datum_t>(std::move(array), env->limits);
 }
 
-MUST_USE bool table_t::sync(env_t *env, const rcheckable_t *parent) {
+MUST_USE bool table_t::sync(signal_t *interruptor,
+                            env_t *env, const rcheckable_t *parent) {
     rcheck_target(parent, base_exc_t::GENERIC,
                   bounds.is_universe() && sorting == sorting_t::UNORDERED,
                   "sync can only be applied directly to a table.");
     // In order to get the guarantees that we expect from a user-facing command,
     // we always have to use hard durability in combination with sync.
-    return sync_depending_on_durability(env, DURABILITY_REQUIREMENT_HARD);
+    return sync_depending_on_durability(interruptor, env, DURABILITY_REQUIREMENT_HARD);
 }
 
-MUST_USE bool table_t::sync_depending_on_durability(env_t *env,
-                durability_requirement_t durability_requirement) {
+MUST_USE bool table_t::sync_depending_on_durability(
+        signal_t *interruptor,
+        env_t *env,
+        durability_requirement_t durability_requirement) {
     return table->write_sync_depending_on_durability(
-            env->interruptor, env, durability_requirement);
+            interruptor, env, durability_requirement);
 }
 
 const std::string &table_t::get_pkey() {
     return table->get_pkey();
 }
 
-counted_t<const datum_t> table_t::get_row(env_t *env, counted_t<const datum_t> pval) {
-    return table->read_row(env->interruptor, env, pval, use_outdated);
+counted_t<const datum_t> table_t::get_row(signal_t *interruptor, env_t *env,
+                                          counted_t<const datum_t> pval) {
+    return table->read_row(interruptor, env, pval, use_outdated);
 }
 
 counted_t<datum_stream_t> table_t::get_all(
@@ -257,6 +267,7 @@ counted_t<datum_stream_t> table_t::as_datum_stream(env_t *env,
 }
 
 counted_t<datum_stream_t> table_t::get_intersecting(
+        signal_t *interruptor,
         env_t *env,
         const counted_t<const datum_t> &query_geometry,
         const std::string &new_sindex_id,
@@ -270,7 +281,7 @@ counted_t<datum_stream_t> table_t::get_intersecting(
     r_sanity_check(bounds.is_universe());
 
     return table->read_intersecting(
-        env->interruptor,
+        interruptor,
         env,
         *sindex_id,
         parent->backtrace(),
@@ -280,6 +291,7 @@ counted_t<datum_stream_t> table_t::get_intersecting(
 }
 
 counted_t<datum_stream_t> table_t::get_nearest(
+        signal_t *interruptor,
         env_t *env,
         lat_lon_point_t center,
         double max_dist,
@@ -298,7 +310,7 @@ counted_t<datum_stream_t> table_t::get_nearest(
     r_sanity_check(bounds.is_universe());
 
     return table->read_nearest(
-        env->interruptor,
+        interruptor,
         env,
         *sindex_id,
         parent->backtrace(),

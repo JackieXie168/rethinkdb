@@ -260,7 +260,7 @@ public:
 private:
     virtual std::string write_eval_impl(scope_env_t *env, args_t *args, eval_flags_t) const {
         counted_t<table_t> t = args->arg(env, 0)->as_table();
-        bool success = t->sync(env->env, this);
+        bool success = t->sync(env->interruptor, env->env, this);
         r_sanity_check(success);
         return "synced";
     }
@@ -307,7 +307,7 @@ private:
     virtual counted_t<val_t> eval_impl(scope_env_t *env, args_t *args, eval_flags_t) const {
         counted_t<table_t> table = args->arg(env, 0)->as_table();
         counted_t<const datum_t> pkey = args->arg(env, 1)->as_datum();
-        counted_t<const datum_t> row = table->get_row(env->env, pkey);
+        counted_t<const datum_t> row = table->get_row(env->interruptor, env->env, pkey);
         return new_val(row, pkey, table);
     }
     virtual const char *name() const { return "get"; }
@@ -337,7 +337,8 @@ private:
             datum_array_builder_t arr(env->env->limits);
             for (size_t i = 1; i < args->num_args(); ++i) {
                 counted_t<const datum_t> key = args->arg(env, i)->as_datum();
-                counted_t<const datum_t> row = table->get_row(env->env, key);
+                counted_t<const datum_t> row
+                    = table->get_row(env->interruptor, env->env, key);
                 if (row->get_type() != datum_t::R_NULL) {
                     arr.add(row);
                 }
