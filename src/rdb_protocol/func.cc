@@ -67,7 +67,7 @@ counted_t<val_t> reql_func_t::call(
             ? captured_scope
             : captured_scope.with_func_arg_list(arg_names, args);
 
-        scope_env_t scope_env(env, std::move(new_scope));
+        scope_env_t scope_env(env->interruptor, env, std::move(new_scope));
         return body->eval(&scope_env, eval_flags);
     } catch (const datum_exc_t &e) {
         rfail(e.get_type(), "%s", e.what());

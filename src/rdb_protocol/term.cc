@@ -236,7 +236,7 @@ void run(protob_t<Query> q,
         }
 
         try {
-            scope_env_t scope_env(&env, var_scope_t());
+            scope_env_t scope_env(env.interruptor, &env, var_scope_t());
             counted_t<val_t> val = root_term->eval(&scope_env);
             if (val->get_type().is_convertible(val_t::type_t::DATUM)) {
                 res->set_type(Response::SUCCESS_ATOM);

@@ -132,8 +132,9 @@ public:
 // supplies the variables along with the "global" evaluation environment.
 class scope_env_t {
 public:
-    scope_env_t(env_t *_env, var_scope_t &&_scope)
-        : env(_env), scope(std::move(_scope)) { }
+    scope_env_t(signal_t *_interruptor, env_t *_env, var_scope_t &&_scope)
+        : interruptor(_interruptor), env(_env), scope(std::move(_scope)) { }
+    signal_t *const interruptor;
     env_t *const env;
     const var_scope_t scope;
 

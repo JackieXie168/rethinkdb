@@ -148,7 +148,9 @@ void count_evals(test_rdb_env_t *test_env, ql::protob_t<const Term> term, uint32
     ql::compile_env_t compile_env((ql::var_visibility_t()));
     counted_t<const ql::term_t> compiled_term = ql::compile_term(&compile_env, term);
 
-    ql::scope_env_t scope_env(env_instance->get(), ql::var_scope_t());
+    ql::scope_env_t scope_env(env_instance->get()->interruptor,
+                              env_instance->get(),
+                              ql::var_scope_t());
     UNUSED counted_t<ql::val_t> result = compiled_term->eval(&scope_env);
     rassert(*count_out > 0);
     guarantee(verify_callback->verify(env_instance.get()));
@@ -167,7 +169,9 @@ void interrupt_test(test_rdb_env_t *test_env,
     counted_t<const ql::term_t> compiled_term = ql::compile_term(&compile_env, term);
 
     try {
-        ql::scope_env_t scope_env(env_instance->get(), ql::var_scope_t());
+        ql::scope_env_t scope_env(env_instance->get()->interruptor,
+                                  env_instance->get(),
+                                  ql::var_scope_t());
         UNUSED counted_t<ql::val_t> result = compiled_term->eval(&scope_env);
     } catch (const interrupted_exc_t &ex) {
         guarantee(verify_callback->verify(env_instance.get()));
