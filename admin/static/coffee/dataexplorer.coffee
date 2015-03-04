@@ -3006,7 +3006,7 @@ module 'DataExplorerView', ->
                             @add_row row
                         @parent.update_feed_metadata()
                     @fetch_batch_rows()
-                @query_result.fetch_next()
+                setTimeout(@query_result.fetch_next.bind(@), 0)
             else
                 @parent.render()
                 @render()
